@@ -100,7 +100,7 @@ def get_all_teams():
         res = cursor.fetchone()
     cursor.close()
     con.close()
-    return res
+    return res if res else 0
 
 
 def get_host_id():
@@ -136,54 +136,6 @@ def get_access(chat_id):
     con.close()
     return res[0] if res else ""
 
-
-def drop_tables():
-    con = sqlite3.connect('quizbot.db')
-    cursor = con.cursor()
-    tmp = "BEGIN TRANSACTION;" \
-          "DELETE FROM game_board;" \
-          "COMMIT;" \
-          "BEGIN TRANSACTION" \
-          "DELETE FROM game_teams;" \
-          "COMMIT;" \
-          "BEGIN TRANSACTION;" \
-          "UPDATE SQLITE_SEQUENCE SET seq = 0 WHERE name = 'game_board';" \
-          "COMMIT;" \
-          "BEGIN TRANSACTION;" \
-          "UPDATE SQLITE_SEQUENCE SET seq = 0 WHERE name = 'game_teams';" \
-          "COMMIT"
-    try:
-        cursor.execute(tmp)
-    except sqlite3.IntegrityError:
-        cursor.close()
-        con.close()
-        return False
-    else:
-        con.commit()
-        cursor.close()
-        con.close()
-        return True
-
-
-def add_result():
-    con = sqlite3.connect('quizbot.db')
-    cursor = con.cursor()
-    tmp = "UPDATE teams SET points = (SELECT sum FROM " \
-          "(SELECT game_board.team, teams.points + SUM(game_board.points) AS sum FROM game_board " \
-          "JOIN teams ON game_board.team = teams.name) " \
-          "WHERE team = teams.name) WHERE name IN (SELECT teams.name FROM teams " \
-          "JOIN game_board ON teams.name = game_board.team)"
-    try:
-        cursor.execute(tmp)
-    except sqlite3.IntegrityError:
-        cursor.close()
-        con.close()
-        return False
-    else:
-        con.commit()
-        cursor.close()
-        con.close()
-        return True
 
 
 def get_num_of_questions():
@@ -302,6 +254,7 @@ def get_answer(num):
         res = cursor.fetchone()
     cursor.close()
     con.close()
+    print(f"in get_answer{res[0]}")
     return res[0] if res else 0
 
 
@@ -342,12 +295,12 @@ def get_team_name(chat_id):
 def add_question_res(chat_id, num):
     points = get_question_points(num)
     name = get_team_name(chat_id)
-    res = False
     if name and points:
         con = sqlite3.connect('quizbot.db')
         cursor = con.cursor()
         tmp = "INSERT INTO game_board (team, q_num, points) VALUES ('" + name + "', " + str(num) + ", "\
               + str(points) + ")"
+        print(f"in add_question_res {tmp}")
         try:
             cursor.execute(tmp)
         except sqlite3.IntegrityError:
@@ -381,3 +334,95 @@ def check(num):
     cursor.close()
     con.close()
     return res if res else 0
+
+
+def drop_tables():
+    res = True
+    con = sqlite3.connect('quizbot.db')
+    cursor = con.cursor()
+    tmp = "DELETE FROM game_board"
+    try:
+        cursor.execute(tmp)
+    except sqlite3.IntegrityError:
+        cursor.close()
+        con.close()
+        res = False
+    else:
+        con.commit()
+        cursor.close()
+        con.close()
+        res = True
+    if res:
+        con = sqlite3.connect('quizbot.db')
+        cursor = con.cursor()
+        tmp = "DELETE FROM game_teams WHERE access = 'gamer'"
+        try:
+            cursor.execute(tmp)
+        except sqlite3.IntegrityError:
+            cursor.close()
+            con.close()
+            res = False
+        else:
+            con.commit()
+            cursor.close()
+            con.close()
+            res = True
+    else:
+        return res
+    if res:
+        con = sqlite3.connect('quizbot.db')
+        cursor = con.cursor()
+        tmp = "UPDATE SQLITE_SEQUENCE SET seq = 0 WHERE name = 'game_board'"
+        # "UPDATE SQLITE_SEQUENCE SET seq = 0 WHERE name = 'game_teams';"
+        try:
+            cursor.execute(tmp)
+        except sqlite3.IntegrityError:
+            cursor.close()
+            con.close()
+            res = False
+        else:
+            con.commit()
+            cursor.close()
+            con.close()
+            res = True
+    else:
+        return res
+    if res:
+        con = sqlite3.connect('quizbot.db')
+        cursor = con.cursor()
+        tmp = "UPDATE SQLITE_SEQUENCE SET seq = 0 WHERE name = 'game_teams'"
+        try:
+            cursor.execute(tmp)
+        except sqlite3.IntegrityError:
+            cursor.close()
+            con.close()
+            res = False
+        else:
+            con.commit()
+            cursor.close()
+            con.close()
+            res = True
+    else:
+        return res
+    return res
+
+
+def add_result():
+    con = sqlite3.connect('quizbot.db')
+    cursor = con.cursor()
+    tmp = "UPDATE teams SET points = (SELECT sum FROM " \
+          "(SELECT game_board.team, teams.points + SUM(game_board.points) AS sum FROM game_board " \
+          "JOIN teams ON game_board.team = teams.name) " \
+          "WHERE team = teams.name) WHERE name IN (SELECT teams.name FROM teams " \
+          "JOIN game_board ON teams.name = game_board.team)"
+    try:
+        cursor.execute(tmp)
+    except sqlite3.IntegrityError:
+        cursor.close()
+        con.close()
+        return False
+    else:
+        con.commit()
+        cursor.close()
+        con.close()
+        return True

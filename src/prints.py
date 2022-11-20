@@ -37,7 +37,7 @@ def print_next_question(question_num):
     res = db.get_all_question(question_num)
     if res:
         text += "Следующий вопрос:\n\n"
-        text += f"Раунд {res[0]} вопрос №{res[1]}\n\n{res[2]}\nОтвет: {res[3]}\nКоличество баллов:{res[4]}"
+        text += f"Раунд {res[0]} вопрос №{res[1]}\n\n{res[2]}\nОтвет: {res[3]}\nКоличество баллов: {res[4]}"
     else:
         text += "Больше нет вопросов"
     return text

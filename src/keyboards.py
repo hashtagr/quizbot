@@ -17,13 +17,12 @@ def gamer_menu_buttons():
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
     btn1 = types.KeyboardButton('🔸 Посмотреть счет этой игры 🔸')
     btn2 = types.KeyboardButton('🔸 Посмотреть турнирную таблицу 🔸')
-    # btn3 = types.KeyboardButton('🔸  🔸')
-    # btn4 = types.KeyboardButton('🔸  🔸')
-    kb.add(btn1, btn2)#, btn3, btn4)
+    kb.add(btn1, btn2)
     return kb
 
 
 def stop_button():
     kb = types.InlineKeyboardMarkup(row_width=1)
     btn1 = types.InlineKeyboardButton(text='Стоп', callback_data='stop')
+    kb.add(btn1)
     return kb
