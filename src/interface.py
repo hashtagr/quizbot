@@ -12,7 +12,8 @@ question_num = 0
 def start(message):
     user = message.from_user.username
     print(f"new user: {user}")
-    bot.send_message(message.chat.id, text="Добро пожаловать на игру!\nПожалуйста, введите пароль доступа:")
+    if db.get_access(message.chat.id) == "":
+        bot.send_message(message.chat.id, text="Добро пожаловать на игру!\nПожалуйста, введите пароль доступа:")
 
 
 @bot.message_handler(content_types=['text'])
@@ -97,6 +98,7 @@ def game_process(message):
             bot.send_message(db.get_host_id(), text="Возникла ошибка\nПроверьте состояние таблиц")
     else:
         bot.send_message(message.chat.id, text="Ошибка!")
+        bot.register_next_step_handler(message, game_process)
 
 
 def question_process(message):

@@ -217,7 +217,7 @@ def get_gamers_chat_id():
         res = cursor.fetchone()
     cursor.close()
     con.close()
-    return int(res) if res else 0
+    return res if res else 0
 
 
 def get_this_game_scores():
@@ -257,7 +257,7 @@ def get_all_games_scores():
 def get_all_question(num):
     con = sqlite3.connect('quizbot.db')
     cursor = con.cursor()
-    tmp = "SELECT round_num, q_num, question, answer FROM questions WHERE id = " + str(num)
+    tmp = "SELECT round_num, q_num, question, answer, value FROM questions WHERE id = " + str(num)
     try:
         cursor.execute(tmp)
     except sqlite3.IntegrityError:

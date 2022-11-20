@@ -34,7 +34,7 @@ def print_question(question_num):
 
 def print_next_question(question_num):
     text = ""
-    res = db.get_all_games_scores()
+    res = db.get_all_question(question_num)
     if res:
         text += "Следующий вопрос:\n\n"
         text += f"Раунд {res[0]} вопрос №{res[1]}\n\n{res[2]}\nОтвет: {res[3]}\nКоличество баллов:{res[4]}"
