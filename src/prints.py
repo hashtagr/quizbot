@@ -26,7 +26,7 @@ def print_question(question_num):
     res = db.get_question(question_num)
     if res:
         text += "Вопрос:\n\n"
-        text += f"{res[0]}\n\nКоличество баллов за вопрос:{res[1]}"
+        text += f"{res[0]}\n\nКоличество баллов за вопрос: {res[1]}"
     else:
         text += "Больше нет вопросов"
     return text

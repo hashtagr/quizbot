@@ -137,7 +137,6 @@ def get_access(chat_id):
     return res[0] if res else ""
 
 
-
 def get_num_of_questions():
     con = sqlite3.connect('quizbot.db')
     cursor = con.cursor()
@@ -166,7 +165,7 @@ def get_gamers_chat_id():
         con.close()
         return 0
     else:
-        res = cursor.fetchone()
+        res = cursor.fetchall()
     cursor.close()
     con.close()
     return res if res else 0
@@ -254,7 +253,6 @@ def get_answer(num):
         res = cursor.fetchone()
     cursor.close()
     con.close()
-    print(f"in get_answer{res[0]}")
     return res[0] if res else 0
 
 
@@ -300,7 +298,28 @@ def add_question_res(chat_id, num):
         cursor = con.cursor()
         tmp = "INSERT INTO game_board (team, q_num, points) VALUES ('" + name + "', " + str(num) + ", "\
               + str(points) + ")"
-        print(f"in add_question_res {tmp}")
+        try:
+            cursor.execute(tmp)
+        except sqlite3.IntegrityError:
+            cursor.close()
+            con.close()
+            res = False
+        else:
+            con.commit()
+            cursor.close()
+            con.close()
+            res = True
+    else:
+        res = False
+    return res
+
+
+def add_wrong_question_res(chat_id, num):
+    name = get_team_name(chat_id)
+    if name:
+        con = sqlite3.connect('quizbot.db')
+        cursor = con.cursor()
+        tmp = "INSERT INTO game_board (team, q_num, points) VALUES ('" + name + "', " + str(num) + ", 0)"
         try:
             cursor.execute(tmp)
         except sqlite3.IntegrityError:
@@ -322,7 +341,7 @@ def check(num):
     cursor = con.cursor()
     tmp = "SELECT game_teams.chat_id FROM game_teams " \
           "JOIN game_board ON game_teams.name = game_board.team " \
-          "WHERE game_board.q_num = " + str(num)
+          f"WHERE game_board.q_num = {str(num)} AND NOT game_board.points = 0"
     try:
         cursor.execute(tmp)
     except sqlite3.IntegrityError:
@@ -330,10 +349,48 @@ def check(num):
         con.close()
         return 0
     else:
-        res = cursor.fetchone()
+        res = cursor.fetchall()
     cursor.close()
     con.close()
     return res if res else 0
+
+
+def check_gamer(chat_id, num):
+    con = sqlite3.connect('quizbot.db')
+    cursor = con.cursor()
+    tmp = "SELECT game_board.team FROM game_board " \
+          "JOIN game_teams ON game_board.team = game_teams.name " \
+          f"WHERE game_board.q_num = {num} AND game_teams.chat_id = {chat_id}"
+    try:
+        cursor.execute(tmp)
+    except sqlite3.IntegrityError:
+        cursor.close()
+        con.close()
+        return 0
+    else:
+        res = cursor.fetchall()
+    cursor.close()
+    con.close()
+    return res[0] if res else 0
+
+
+def add_user_to_data(chat_id):
+    con = sqlite3.connect('quizbot.db')
+    cursor = con.cursor()
+    tmp = "INSERT INTO users_data (chat_id) VALUES (" + str(chat_id) + ")"
+    res = False
+    try:
+        cursor.execute(tmp)
+    except sqlite3.IntegrityError:
+        cursor.close()
+        con.close()
+        res = False
+    else:
+        con.commit()
+        cursor.close()
+        con.close()
+        res = True
+    return res
 
 
 def drop_tables():
@@ -410,11 +467,8 @@ def drop_tables():
 def add_result():
     con = sqlite3.connect('quizbot.db')
     cursor = con.cursor()
-    tmp = "UPDATE teams SET points = (SELECT sum FROM " \
-          "(SELECT game_board.team, teams.points + SUM(game_board.points) AS sum FROM game_board " \
-          "JOIN teams ON game_board.team = teams.name) " \
-          "WHERE team = teams.name) WHERE name IN (SELECT teams.name FROM teams " \
-          "JOIN game_board ON teams.name = game_board.team)"
+    tmp = "UPDATE teams SET points = points + (SELECT SUM(points) AS sum FROM game_board " \
+          "WHERE team = teams.name) WHERE name IN (SELECT team FROM game_board)"
     try:
         cursor.execute(tmp)
     except sqlite3.IntegrityError:
@@ -426,3 +480,4 @@ def add_result():
         cursor.close()
         con.close()
         return True
+    return res

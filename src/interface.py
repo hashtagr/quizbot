@@ -12,14 +12,15 @@ process = 0
 @bot.message_handler(commands=['start'])
 def start(message):
     user = message.from_user.username
-    print(f"new user: {user}")
+    print(f"new user {user}")
+    if db.add_user_to_data(message.chat.id):
+        print(f"user {user} added to database")
     if db.get_access(message.chat.id) == "":
         bot.send_message(message.chat.id, text="Добро пожаловать на игру!\nПожалуйста, введите пароль доступа:")
 
 
 @bot.message_handler(content_types=['text'])
 def parser(message):
-    print(f"parser {message.text}")
     if db.get_access(message.chat.id) == "":
         if message.text == db.get_host_password():
             if db.get_host_id() == 0:
@@ -43,12 +44,9 @@ def parser(message):
 
 
 def get_team_name(message):
-    print(f"team_name {message.text}")
     name = message.text
     name.lower()
-    print(name)
     if db.add_team_to_game(message.chat.id, name):
-        print(name)
         check = db.get_all_teams()
         if not check or name not in check:
             if db.add_team_to_teams(name):
@@ -71,7 +69,6 @@ def get_team_name(message):
 
 
 def game_process(message):
-    print(f"game process {message.text}")
     global question_num, process
     if process == 1:
         question_process(message)
@@ -88,12 +85,8 @@ def game_process(message):
         if question_num < db.get_num_of_questions():
             question_num += 1
             for a in db.get_gamers_chat_id():
-                bot.send_message(int(a), text=prints.print_question(question_num))
-                # bot.register_next_step_handler(message, question_process)
-            if db.get_access(message.chat.id) == "gamer":
-                pass
-                # bot.register_next_step_handler(message, question_process)
-            else:
+                bot.send_message(int(a[0]), text=prints.print_question(question_num))
+            if db.get_access(message.chat.id) == "host":
                 question_process(message)
         else:
             bot.send_message(db.get_host_id(), text="Вопросы закончились")
@@ -115,37 +108,47 @@ def game_process(message):
 
 
 def question_process(message):
-    print(f"question process {message.text}")
     global question_num
-    if db.get_access(message.chat.id) == "gamer":
+    if db.get_access(message.chat.id) == "gamer" and not db.check_gamer(message.chat.id, question_num):
         if str(message.text).lower() == db.get_answer(question_num):
             if db.add_question_res(message.chat.id, question_num):
                 bot.send_message(db.get_host_id(), text=f"🟢 Команда {db.get_team_name(message.chat.id)} ответила "
-                                                        f"правильно, результат успешно записан в базу данных")
+                                                        f"'{message.text}', результат успешно записан в базу данных")
             else:
                 bot.send_message(db.get_host_id(), text=f"!!!Команда {db.get_team_name(message.chat.id)} ответила "
                                                         f"правильно, но произошла ошибка записи в базу данных!!!")
         else:
-            bot.send_message(db.get_host_id(), text=f"🔴 Команда {db.get_team_name(message.chat.id)} ответила "
-                                                    f"неправильно")
+            if db.add_wrong_question_res(message.chat.id, question_num):
+                bot.send_message(db.get_host_id(), text=f"🔴 Команда {db.get_team_name(message.chat.id)} ответила "
+                                                        f"'{message.text}' - неправильно")
+            else:
+                bot.send_message(db.get_host_id(), text=f"!!!Команда {db.get_team_name(message.chat.id)} ответила "
+                                                        f"НЕправильно, но произошла ошибка записи в базу данных!!!")
     elif db.get_access(message.chat.id) == "host":
         kb = keyboards.stop_button()
         bot.send_message(message.chat.id, text="Нажмите кнопку, чтобы закончить прием ответов:", reply_markup=kb)
+    else:
+        bot.send_message(message.chat.id, text="Пожалуйста,дождитесь, пока ведущий завершит прием ответов")
 
 
 @bot.callback_query_handler(func=lambda message: True)
 def stop(call):
-    print(f"stop process {call.data}")
     global question_num, process
     if call.data == 'stop':
-        check = db.check(question_num)
-        if check:
+        tmp_check = db.check(question_num)
+        if tmp_check:
+            check = []
+            for a in tmp_check:
+                check.append(a[0])
             for a in db.get_gamers_chat_id():
-                if a in check:
-                    bot.send_message(int(a), text="🟢 Вы ответили правильно 🟢")
+                i = 0
+                if a[0] in check:
+                    bot.send_message(int(a[0]), text="🟢 Вы ответили правильно 🟢")
                 else:
-                    bot.send_message(int(a), text="🔴 Вы ответили неправильно 🔴")
+                    bot.send_message(int(a[0]), text="🔴 Вы ответили неправильно 🔴")
+                i += 1
         else:
             for a in db.get_gamers_chat_id():
-                bot.send_message(int(a), text="🔴 Вы ответили неправильно 🔴")
+                bot.send_message(int(a[0]), text="🔴 Вы не успели ответить 🔴")
+        bot.send_message(db.get_host_id(), text="Прием ответов завершен")
     process = 0
